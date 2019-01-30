@@ -9,6 +9,37 @@ from aliyunsdkcore.acs_exception.exceptions import ServerException
 # 导入需要模块
 import json,sys,re,os,string
 
+def cprint(str, color, display=1):
+    """ 
+        -------------------------------------------
+        color:
+        -------------------------------------------
+        字体色     |       背景色     |      颜色描述
+        -------------------------------------------
+        30        |        40       |       黑色
+        31        |        41       |       红色
+        32        |        42       |       绿色
+        33        |        43       |       黃色
+        34        |        44       |       蓝色
+        35        |        45       |       紫红色
+        36        |        46       |       青蓝色
+        37        |        47       |       白色
+        -------------------------------------------
+        display:
+        -------------------------------
+        显示方式     |      效果
+        -------------------------------
+        0           |     终端默认设置
+        1           |     高亮显示
+        4           |     使用下划线
+        5           |     闪烁
+        7           |     反白显示
+        8           |     不可见
+        -------------------------------
+    """
+    return '\033[{2};{1}m{0}\033[0m'.format(str,color,display)
+
+
 class DDNS:
     '''针对指定域名的主机记录为A的动态域名解析'''
     my_ip=None
@@ -57,6 +88,8 @@ class DDNS:
 
     def save_record(self, response):
         '''保存需要的解析记录'''
+        if sys.version_info > (3,0):
+            response = response.decode('utf-8')
         # json转换
         response = json.JSONDecoder().decode(response)
         if 'DomainRecords' in response :
@@ -65,19 +98,12 @@ class DDNS:
             if 'Record' in response:
                 response = response['Record']
                 if len(response) == 0:
-                    print('No '+self.rr+"."+self.domain+" parsing record")
+                    print(cprint('No ','31')+cprint(self.rr+"."+self.domain,'36')+cprint(" parsing record!",'31'))
                     self.__status=False
                     return
                 elif len(response) == 1:
                     response = response[0]
-            else:
-                print(response)
-                self.__status=False
-                return
-        elif 'Code' in response :
-            self.__status=False
-            print("Code:"+response['Code'])
-            return
+
         # 获取解析记录IP
         self.__parser_ip = response['Value']
         # 获取解析记录RecordId
@@ -95,13 +121,23 @@ class DDNS:
     @staticmethod
     def native_ip(url="http://txt.go.sohu.com/ip/soip"):
         '''获取本机当前公网ip'''
-        import urllib2
-        url = urllib2.urlopen(url)
-        text = url.read()
-        ip = re.findall(r'\d+.\d+.\d+.\d+',text)
-        DDNS.my_ip = "{0}".join(ip)
-        return "{0}".join(ip)
-
+        # 判断当前python版本
+        if sys.version_info < (3,0):
+            # python2.*导入的模块
+            import urllib2
+            url = urllib2.urlopen(url)
+            text = url.read()
+            ip = re.findall(r'\d+.\d+.\d+.\d+',text)
+            DDNS.my_ip = "{0}".join(ip)
+            return "{0}".join(ip)
+        else:
+            # python3.*导入的模块
+            import urllib
+            url = urllib.request.urlopen(url)
+            text = url.read().decode('utf-8')
+            ip = re.findall(r'\d+.\d+.\d+.\d+',text)
+            DDNS.my_ip = "{0}".join(ip)
+            return "{0}".join(ip)
 
 
     def parser_ip(self):
@@ -142,10 +178,10 @@ class DDNS:
         response = self.__client.do_action_with_exception(self.__request)
         return response
 
-
+    
 def main(cmd):
     '''程序执行'''
-    if(cmd == 2):
+    if cmd == 2:
         # 判断返回本机当前公网IP
         if sys.argv[1]=="my_ip":
             DDNS.native_ip()
@@ -159,45 +195,48 @@ def main(cmd):
             if 'AccessKeyId' in jsonStr:
                 key_id = jsonStr.get('AccessKeyId')
             else:
-                print("Your JSON configuration is incorrect and lacks the key of AccessKeyId!")
+                print(cprint("Your JSON configuration is incorrect and lacks the key of AccessKeyId!",'31'))
             if 'AccessKeySecret' in jsonStr:
                 key_secret = jsonStr.get('AccessKeySecret')
             else:
-                print("Your JSON configuration is incorrect and lacks the key of AccessKeySecret!")
+                print(cprint("Your JSON configuration is incorrect and lacks the key of AccessKeySecret!",'31'))
             if 'domain_name' in jsonStr:
                 domain_name = jsonStr.get('domain_name')
             else:
-                print("Your JSON configuration is incorrect and lacks the key of domain_name!")
+                print(cprint("Your JSON configuration is incorrect and lacks the key of domain_name!",'31'))
             if 'type_key_word' in jsonStr:
                 type_key_word = jsonStr.get('type_key_word')
             else:
-                print("Your JSON configuration is incorrect and lacks the key of type_key_word!")
+                print(cprint("Your JSON configuration is incorrect and lacks the key of type_key_word!",'31'))
             if not key_id or not key_secret or not domain_name or not type_key_word:
                 return False
             # 执行DDNS初始化
             myddns = DDNS(key_id,key_secret,domain_name,type_key_word)
-    elif(cmd > 3):
+    elif cmd == 4:
         key_id = sys.argv[1]
         key_secret = sys.argv[2]
         domain_name = sys.argv[3]
-        # 是否有主机记录
-        if cmd > 4:
-            type_key_word = sys.argv[4]
-            # 自定主机记录的DDNS初始化
-            myddns = DDNS(key_id,key_secret,domain_name,type_key_word)
-        else:
-            # 默认@主机记录的DDNS初始化
-            myddns = DDNS(key_id,key_secret,domain_name)
+        # 默认@主机记录的DDNS初始化
+        myddns = DDNS(key_id,key_secret,domain_name)
+    elif cmd == 5:
+        key_id = sys.argv[1]
+        key_secret = sys.argv[2]
+        domain_name = sys.argv[3]
+        type_key_word = sys.argv[4]
+        # 自定主机记录的DDNS初始化
+        myddns = DDNS(key_id,key_secret,domain_name,type_key_word)
     else:
-        print("The parameters are not enough to initialize the program！")
+        print(cprint("The parameters are not enough to initialize the program",'31'))
         return False
-    # 获取解析记录IP，并返回
+    # 获取解析记录IP
     ip = myddns.parser_ip()
+    # 获取本机当前公网IP
     my_ip = DDNS.native_ip()
+    # 判断两个IP都成功获取后
     if ip and my_ip:
-        print("%s IP:%s  My IP:%s"%(domain_name,ip,my_ip))
+        print("%s IP: %s My IP: %s"%(domain_name,cprint(ip,"36","4"),cprint(my_ip,"36","4")))
         if ip == my_ip:
-            print("Dynamic parsing results: Local IP and domain name parsing IP are the same!")
+            print(cprint("Dynamic parsing results: Local IP and domain name parsing IP are the same!","32"))
         else:
             myddns.update_ip(my_ip)
             return True
@@ -207,8 +246,12 @@ if __name__ == '__main__' :
     cmd = len(sys.argv)
     try:
         if main(cmd):
-            print("Successful change of parsing content!")
+            print(cprint("Successful change of parsing content!","32"))
         else:
-            print("Failed to change parsing content!")
+            print(cprint("Failed to change parsing content!","31"))
     except (ServerException,ClientException) as reason:
-        print("Failed to change parsing content! The reason is:"+reason.get_error_msg())
+        print(cprint("Failed to change parsing content! ",'31'))
+        print(cprint("ERROR:",'33')+cprint(reason.get_error_msg(),"35"))
+    except Exception as err:
+        print(cprint("ERROR:",'33')+cprint(err,"35"))
+    
