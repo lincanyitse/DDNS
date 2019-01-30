@@ -6,6 +6,6 @@ This is based on Aliyun Python SDK written for the designated domain name and ho
 使用此文件需要安装阿里云 Python SDK:  
   
 如果您使用Python 2.x，执行以下命令，安装阿里云SDK核心库：  
-    pip install aliyun-python-sdk-core  
+    > pip install aliyun-python-sdk-core  
 如果您使用Python 3.x，执行以下命令，安装阿里云SDK核心库：  
-    pip install aliyun-python-sdk-core-v3  
+    > pip install aliyun-python-sdk-core-v3  
